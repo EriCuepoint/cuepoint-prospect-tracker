@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuepoint Prospect Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --green: #16a34a;
+      --red: #dc2626;
+      --amber: #d97706;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px 16px 48px;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; }
+
+    header { margin-bottom: 28px; }
+    header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+    header p { color: var(--muted); font-size: 14px; margin-top: 3px; }
+
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary);
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .subsection { margin-bottom: 20px; }
+    .subsection:last-child { margin-bottom: 0; }
+
+    .subsection-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 500px) {
+      .field-grid { grid-template-columns: 1fr; }
+    }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field.span-2 { grid-column: 1 / -1; }
+
+    .field-label { font-size: 13px; font-weight: 500; }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 14px;
+      color: var(--text);
+      background: white;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+      appearance: none;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 32px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+
+    textarea { resize: vertical; min-height: 96px; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .toggle-row:first-child { padding-top: 0; }
+
+    .toggle-row-label { font-size: 14px; flex: 1; padding-right: 16px; }
+
+    .radio-toggle {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .radio-option { cursor: pointer; }
+    .radio-option input[type="radio"] { display: none; }
+
+    .radio-option span {
+      display: block;
+      padding: 5px 13px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: all .15s;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .radio-option:not(:last-child) span { border-right: 1px solid var(--border); }
+
+    .radio-option.yes input[type="radio"]:checked + span {
+      background: #dcfce7;
+      color: var(--green);
+    }
+
+    .radio-option.no input[type="radio"]:checked + span {
+      background: #fee2e2;
+      color: var(--red);
+    }
+
+    .signal-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .signal-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+
+    .signal-item:has(input:checked) {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+
+    .signal-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--primary);
+      margin-top: 2px;
+    }
+
+    .signal-item label {
+      font-size: 14px;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .score-display {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .score-number {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 5px;
+      transition: color .25s;
+    }
+
+    .score-label {
+      font-size: 15px;
+      font-weight: 600;
+      transition: color .25s;
+    }
+
+    .score-sublabel {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .score-low  { color: var(--red); }
+    .score-mid  { color: var(--amber); }
+    .score-high { color: var(--green); }
+
+    .divider {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 16px 0;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      font-family: inherit;
+    }
+
+    .submit-btn:hover { background: #1d4ed8; }
+    .submit-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    .confirmation {
+      display: none;
+      text-align: center;
+      padding: 36px 24px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-top: 16px;
+    }
+
+    .confirmation.show { display: block; }
+
+    .check-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #dcfce7;
+      color: var(--green);
+      margin-bottom: 14px;
+    }
+
+    .confirmation h3 { font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+    .confirmation p { color: var(--muted); font-size: 14px; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Cuepoint Prospect Tracker</h1>
+    <p>Research and qualify local business prospects</p>
+  </header>
+
+  <form id="prospectForm">
+
+    <!-- Section 1: Business Info -->
+    <div class="section">
+      <div class="section-title">
+        <span class="section-num">1</span> Business Info
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label class="field-label" for="businessName">Business Name</label>
+          <input type="text" id="businessName" name="businessName" placeholder="e.g. Acme Plumbing">
+        </div>
+        <div class="field">
+          <label class="field-label" for="ownerName">Owner Name</label>
+          <input type="text" id="ownerName" name="ownerName" placeholder="First and Last">
+        </div>
+        <div class="field">
+          <label class="field-label" for="phone">Phone</label>
+          <input type="tel" id="phone" name="phone" placeholder="(555) 000-0000">
+        </div>
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="owner@business.com">
+        </div>
+        <div class="field">
+          <label class="field-label" for="instagramHandle">Instagram Handle</label>
+          <input type="text" id="instagramHandle" name="instagramHandle" placeholder="@handle">
+        </div>
+        <div class="field">
+          <label class="field-label" for="businessType">Business Type</label>
+          <select id="businessType" name="businessType">
+            <option value="">Select type...</option>
+            <option value="trades">Trades / Home Services</option>
+            <option value="wellness">Wellness / Fitness</option>
+            <option value="professional">Professional Services</option>
+            <option value="foodbev">Food and Bev</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="relationship">Relationship</label>
+          <select id="relationship" name="relationship">
+            <option value="">Select...</option>
+            <option value="frequent">I frequent it</option>
+            <option value="mutual">Mutual contact</option>
+            <option value="cold">Cold</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="prospectStatus">Status</label>
+          <select id="prospectStatus" name="status">
+            <option value="to-research">To Research</option>
+            <option value="to-approach">To Approach</option>
+            <option value="contacted">Contacted</option>
+            <option value="diagnostic-scheduled">Diagnostic Scheduled</option>
+            <option value="not-a-fit">Not a Fit</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Desk Research -->
+    <div class="section">
+      <div class="section-title">
+        <span class="section-num">2</span> Desk Research
+      </div>
+
+      <!-- Google Presence -->
+      <div class="subsection">
+        <div class="subsection-label">Google Presence</div>
+        <div class="toggle-row">
+          <span class="toggle-row-label">GBP claimed and verified</span>
+          <div class="radio-toggle">
+            <label class="radio-option yes">
+              <input type="radio" name="gbpClaimed" value="yes"><span>Yes</span>
+            </label>
+            <label class="radio-option no">
+              <input type="radio" name="gbpClaimed" value="no"><span>No</span>
+            </label>
+          </div>
+        </div>
+        <div class="field-grid" style="margin-top:12px;">
+          <div class="field">
+            <label class="field-label" for="gbpReviewCount">GBP Review Count</label>
+            <input type="number" id="gbpReviewCount" name="gbpReviewCount" placeholder="0" min="0">
+          </div>
+          <div class="field">
+            <label class="field-label" for="avgStarRating">Average Star Rating</label>
+            <input type="number" id="avgStarRating" name="avgStarRating" placeholder="0.0" min="0" max="5" step="0.1">
+          </div>
+          <div class="field span-2">
+            <label class="field-label" for="gbpLastPost">Last GBP Post</label>
+            <select id="gbpLastPost" name="gbpLastPost">
+              <option value="">Select...</option>
+              <option value="within-30">Within 30 days</option>
+              <option value="1-6-months">1-6 months ago</option>
+              <option value="6-plus-months">6+ months ago</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Website -->
+      <div class="subsection">
+        <div class="subsection-label">Website</div>
+        <div class="toggle-row">
+          <span class="toggle-row-label">Website exists</span>
+          <div class="radio-toggle">
+            <label class="radio-option yes">
+              <input type="radio" name="websiteExists" value="yes"><span>Yes</span>
+            </label>
+            <label class="radio-option no">
+              <input type="radio" name="websiteExists" value="no"><span>No</span>
+            </label>
+          </div>
+        </div>
+        <div id="websiteSubfields" style="margin-top:10px;">
+          <div class="field" style="margin-bottom:12px;">
+            <label class="field-label" for="websiteLastUpdated">Last Updated Estimate</label>
+            <select id="websiteLastUpdated" name="websiteLastUpdated">
+              <option value="">Select...</option>
+              <option value="recent">Recent</option>
+              <option value="1-2-years">1-2 years old</option>
+              <option value="3-plus">3+ years old</option>
+              <option value="cant-tell">Can't tell</option>
+            </select>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-row-label">Mobile friendly</span>
+            <div class="radio-toggle">
+              <label class="radio-option yes">
+                <input type="radio" name="mobileFriendly" value="yes"><span>Yes</span>
+              </label>
+              <label class="radio-option no">
+                <input type="radio" name="mobileFriendly" value="no"><span>No</span>
+              </label>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-row-label">Visible contact form or booking link</span>
+            <div class="radio-toggle">
+              <label class="radio-option yes">
+                <input type="radio" name="contactForm" value="yes"><span>Yes</span>
+              </label>
+              <label class="radio-option no">
+                <input type="radio" name="contactForm" value="no"><span>No</span>
+              </label>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-row-label">Visible lead capture (e.g. email signup)</span>
+            <div class="radio-toggle">
+              <label class="radio-option yes">
+                <input type="radio" name="leadCapture" value="yes"><span>Yes</span>
+              </label>
+              <label class="radio-option no">
+                <input type="radio" name="leadCapture" value="no"><span>No</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Social -->
+      <div class="subsection">
+        <div class="subsection-label">Social</div>
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="mostActivePlatform">Most Active Platform</label>
+            <select id="mostActivePlatform" name="mostActivePlatform">
+              <option value="">Select...</option>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="both">Both</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="lastPostDate">Last Post Date</label>
+            <select id="lastPostDate" name="lastPostDate">
+              <option value="">Select...</option>
+              <option value="within-30">Within 30 days</option>
+              <option value="1-6-months">1-6 months ago</option>
+              <option value="6-plus-months">6+ months ago</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div class="field span-2">
+            <label class="field-label" for="followerCount">Follower Count</label>
+            <input type="number" id="followerCount" name="followerCount" placeholder="0" min="0">
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Reputation -->
+      <div class="subsection">
+        <div class="subsection-label">Reputation</div>
+        <div class="toggle-row">
+          <span class="toggle-row-label">Listed on Yelp</span>
+          <div class="radio-toggle">
+            <label class="radio-option yes">
+              <input type="radio" name="yelpListed" value="yes"><span>Yes</span>
+            </label>
+            <label class="radio-option no">
+              <input type="radio" name="yelpListed" value="no"><span>No</span>
+            </label>
+          </div>
+        </div>
+        <div id="yelpReviewField" style="margin-top:10px; margin-bottom:4px;">
+          <div class="field">
+            <label class="field-label" for="yelpReviewCount">Yelp Review Count</label>
+            <input type="number" id="yelpReviewCount" name="yelpReviewCount" placeholder="0" min="0">
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-top:10px;">
+          <span class="toggle-row-label">Listed on industry platform (e.g. Houzz, Thumbtack, The Knot)</span>
+          <div class="radio-toggle">
+            <label class="radio-option yes">
+              <input type="radio" name="industryPlatform" value="yes"><span>Yes</span>
+            </label>
+            <label class="radio-option no">
+              <input type="radio" name="industryPlatform" value="no"><span>No</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Conversation Signals -->
+    <div class="section">
+      <div class="section-title">
+        <span class="section-num">3</span> Conversation Signals
+      </div>
+      <div class="signal-list">
+        <div class="signal-item">
+          <input type="checkbox" id="sig1" name="sig_wordOfMouth">
+          <label for="sig1">"Most of our business is word of mouth"</label>
+        </div>
+        <div class="signal-item">
+          <input type="checkbox" id="sig2" name="sig_feastOrFamine">
+          <label for="sig2">"It's feast or famine"</label>
+        </div>
+        <div class="signal-item">
+          <input type="checkbox" id="sig3" name="sig_triedAds">
+          <label for="sig3">"We tried ads but it didn't work"</label>
+        </div>
+        <div class="signal-item">
+          <input type="checkbox" id="sig4" name="sig_websiteDoesntDoMuch">
+          <label for="sig4">"We have a website but it doesn't do much"</label>
+        </div>
+        <div class="signal-item">
+          <input type="checkbox" id="sig5" name="sig_dontKnowLeadSource">
+          <label for="sig5">Mentions not knowing where leads come from</label>
+        </div>
+        <div class="signal-item">
+          <input type="checkbox" id="sig6" name="sig_losingToCompetitors">
+          <label for="sig6">Mentions losing business to competitors without knowing why</label>
+        </div>
+        <div class="signal-item">
+          <input type="checkbox" id="sig7" name="sig_wantToGrow">
+          <label for="sig7">Mentions wanting to grow but not knowing where to start</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Assessment -->
+    <div class="section">
+      <div class="section-title">
+        <span class="section-num">4</span> Assessment
+      </div>
+
+      <div class="score-display">
+        <div class="score-number score-low" id="scoreNumber">0</div>
+        <div class="score-label score-low" id="scoreLabel">Likely not a fit</div>
+        <div class="score-sublabel" id="scoreSublabel">Fill in the form above -- score updates live</div>
+      </div>
+
+      <div class="field" style="margin-bottom:14px;">
+        <label class="field-label" for="notes">Notes</label>
+        <textarea id="notes" name="notes" placeholder="Anything else worth capturing about this prospect..."></textarea>
+      </div>
+
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Save Prospect</button>
+
+  </form>
+
+  <div class="confirmation" id="confirmation">
+    <div class="check-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h3>Prospect Saved</h3>
+    <p id="confirmMsg">Added to your tracker.</p>
+    <button type="button" onclick="startNewEntry()" style="margin-top:16px; padding:8px 20px; background:var(--primary); color:white; border:none; border-radius:7px; font-size:14px; font-weight:600; cursor:pointer;">Add Another</button>
+  </div>
+
+</div>
+
+<script>
+  // Paste your Apps Script Web App URL here after deploying:
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw-HfwNnRR6X-ViPZPBF2nF2QtUu7ExakPdF-UawnfTrrzHhz__DzanB6KtbsaX_k8Nlw/exec';
+
+  function getRadio(name) {
+    const el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+
+  function numVal(id) {
+    const v = document.getElementById(id).value;
+    return v === '' ? null : parseInt(v, 10);
+  }
+
+  function calculateScore() {
+    var score = 0;
+
+    if (getRadio('gbpClaimed') === 'no') score++;
+
+    var gbpReviews = numVal('gbpReviewCount');
+    if (gbpReviews !== null && gbpReviews < 20) score++;
+
+    var gbpPost = document.getElementById('gbpLastPost').value;
+    if (gbpPost && gbpPost !== 'within-30') score++;
+
+    var websiteExists = getRadio('websiteExists');
+    if (websiteExists === 'no') {
+      score += 5;
+    } else if (websiteExists === 'yes') {
+      var lastUpdated = document.getElementById('websiteLastUpdated').value;
+      if (lastUpdated === '3-plus' || lastUpdated === 'cant-tell') score++;
+      if (getRadio('mobileFriendly') === 'no') score++;
+      if (getRadio('contactForm') === 'no') score++;
+      if (getRadio('leadCapture') === 'no') score++;
+    }
+
+    var platform = document.getElementById('mostActivePlatform').value;
+    var lastPost  = document.getElementById('lastPostDate').value;
+    if (platform === 'none' || lastPost === '6-plus-months' || lastPost === 'none') score++;
+
+    var yelpListed = getRadio('yelpListed');
+    if (yelpListed === 'no') {
+      score += 2;
+    } else if (yelpListed === 'yes') {
+      var yelpReviews = numVal('yelpReviewCount');
+      if (yelpReviews !== null && yelpReviews < 10) score++;
+    }
+
+    if (getRadio('industryPlatform') === 'no') score++;
+
+    var signals = ['sig_wordOfMouth','sig_feastOrFamine','sig_triedAds','sig_websiteDoesntDoMuch',
+                   'sig_dontKnowLeadSource','sig_losingToCompetitors','sig_wantToGrow'];
+    signals.forEach(function(name) {
+      var el = document.querySelector('[name="' + name + '"]');
+      if (el && el.checked) score++;
+    });
+
+    return score;
+  }
+
+  function updateScoreDisplay() {
+    var score  = calculateScore();
+    var numEl  = document.getElementById('scoreNumber');
+    var lblEl  = document.getElementById('scoreLabel');
+    var subEl  = document.getElementById('scoreSublabel');
+
+    numEl.textContent = score;
+    numEl.className   = 'score-number';
+    lblEl.className   = 'score-label';
+
+    if (score <= 3) {
+      numEl.classList.add('score-low');
+      lblEl.classList.add('score-low');
+      lblEl.textContent = 'Likely not a fit';
+    } else if (score <= 6) {
+      numEl.classList.add('score-mid');
+      lblEl.classList.add('score-mid');
+      lblEl.textContent = 'Possible';
+    } else {
+      numEl.classList.add('score-high');
+      lblEl.classList.add('score-high');
+      lblEl.textContent = 'Strong prospect';
+    }
+
+    subEl.textContent = score + ' signal point' + (score === 1 ? '' : 's') + ' -- 0-3 Not a fit -- 4-6 Possible -- 7+ Strong';
+  }
+
+  document.querySelectorAll('input[name="websiteExists"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      document.getElementById('websiteSubfields').style.display = radio.value === 'yes' ? '' : 'none';
+      updateScoreDisplay();
+    });
+  });
+
+  document.querySelectorAll('input[name="yelpListed"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      document.getElementById('yelpReviewField').style.display = radio.value === 'yes' ? '' : 'none';
+      updateScoreDisplay();
+    });
+  });
+
+  function collectFormData() {
+    return {
+      timestamp:          new Date().toISOString(),
+      signalScore:        calculateScore(),
+      businessName:       document.getElementById('businessName').value,
+      ownerName:          document.getElementById('ownerName').value,
+      phone:              document.getElementById('phone').value,
+      email:              document.getElementById('email').value,
+      instagramHandle:    document.getElementById('instagramHandle').value,
+      businessType:       document.getElementById('businessType').value,
+      relationship:       document.getElementById('relationship').value,
+      status:             document.getElementById('prospectStatus').value,
+      gbpClaimed:         getRadio('gbpClaimed'),
+      gbpReviewCount:     document.getElementById('gbpReviewCount').value,
+      avgStarRating:      document.getElementById('avgStarRating').value,
+      gbpLastPost:        document.getElementById('gbpLastPost').value,
+      websiteExists:      getRadio('websiteExists'),
+      websiteLastUpdated: document.getElementById('websiteLastUpdated').value,
+      mobileFriendly:     getRadio('mobileFriendly'),
+      contactForm:        getRadio('contactForm'),
+      leadCapture:        getRadio('leadCapture'),
+      mostActivePlatform: document.getElementById('mostActivePlatform').value,
+      lastPostDate:       document.getElementById('lastPostDate').value,
+      followerCount:      document.getElementById('followerCount').value,
+      yelpListed:         getRadio('yelpListed'),
+      yelpReviewCount:    document.getElementById('yelpReviewCount').value,
+      industryPlatform:   getRadio('industryPlatform'),
+      sig_wordOfMouth:         document.querySelector('[name="sig_wordOfMouth"]').checked,
+      sig_feastOrFamine:       document.querySelector('[name="sig_feastOrFamine"]').checked,
+      sig_triedAds:            document.querySelector('[name="sig_triedAds"]').checked,
+      sig_websiteDoesntDoMuch: document.querySelector('[name="sig_websiteDoesntDoMuch"]').checked,
+      sig_dontKnowLeadSource:  document.querySelector('[name="sig_dontKnowLeadSource"]').checked,
+      sig_losingToCompetitors: document.querySelector('[name="sig_losingToCompetitors"]').checked,
+      sig_wantToGrow:          document.querySelector('[name="sig_wantToGrow"]').checked,
+      notes:     document.getElementById('notes').value,
+    };
+  }
+
+  document.getElementById('prospectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    var btn  = document.getElementById('submitBtn');
+    var data = collectFormData();
+
+    btn.disabled    = true;
+    btn.textContent = 'Saving...';
+
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+      console.log('Prospect data (Apps Script URL not set):', data);
+      showConfirmation(data.businessName, true);
+      btn.disabled    = false;
+      btn.textContent = 'Save Prospect';
+      return;
+    }
+
+    fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(data),
+    }).then(function() {
+      showConfirmation(data.businessName, false);
+      btn.disabled    = false;
+      btn.textContent = 'Save Prospect';
+    }).catch(function(err) {
+      console.error('Submission error:', err);
+      alert('Something went wrong. Check the console for details.');
+      btn.disabled    = false;
+      btn.textContent = 'Save Prospect';
+    });
+  });
+
+  function showConfirmation(businessName, devMode) {
+    var name = (businessName || '').trim() || 'Prospect';
+    var msg  = document.getElementById('confirmMsg');
+
+    msg.textContent = devMode
+      ? name + ' logged to console. Paste your Apps Script URL in index.html to save to Google Sheets.'
+      : name + ' has been added to your Google Sheet.';
+
+    document.getElementById('prospectForm').classList.add('hidden');
+    document.getElementById('confirmation').classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function startNewEntry() {
+    document.getElementById('prospectForm').reset();
+    document.getElementById('websiteSubfields').style.display = '';
+    document.getElementById('yelpReviewField').style.display  = '';
+    document.getElementById('prospectForm').classList.remove('hidden');
+    document.getElementById('confirmation').classList.remove('show');
+    updateScoreDisplay();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.getElementById('prospectForm').addEventListener('input',  updateScoreDisplay);
+  document.getElementById('prospectForm').addEventListener('change', updateScoreDisplay);
+
+  updateScoreDisplay();
+</script>
+</body>
+</html>
