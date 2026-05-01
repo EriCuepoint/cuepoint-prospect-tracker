@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuepoint GTM Diagnostic</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #FFFFFF;
+    --text: #222222;
+    --accent: #CC0000;
+    --secondary: #F5F5F5;
+    --border: #DDDDDD;
+    --radius: 8px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Progress bar */
+  #progress-bar-container {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--secondary);
+    z-index: 100;
+  }
+  #progress-bar {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* Main wrapper */
+  #app {
+    width: 100%;
+    max-width: 680px;
+    padding: 60px 24px 48px;
+  }
+
+  /* Screens */
+  .screen {
+    display: none;
+    animation: fadeSlideIn 0.35s ease forwards;
+  }
+  .screen.active {
+    display: block;
+  }
+  .screen.leaving {
+    animation: fadeSlideOut 0.25s ease forwards;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeSlideOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-14px); }
+  }
+
+  /* Logo */
+  .logo-wrap {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .logo-wrap svg {
+    width: 160px;
+    height: 160px;
+  }
+
+  /* Welcome screen */
+  .welcome-title {
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+  .welcome-desc {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #444;
+    margin-bottom: 36px;
+  }
+
+  /* Section statement */
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-size: clamp(1.25rem, 3vw, 1.5rem);
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .section-desc {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: #555;
+    margin-bottom: 32px;
+  }
+
+  /* Question label */
+  .question-label {
+    font-size: clamp(1.05rem, 2.5vw, 1.2rem);
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+  .optional-tag {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: #888;
+    margin-left: 6px;
+  }
+
+  /* MC options */
+  .mc-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .mc-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.18s, background 0.18s;
+    background: var(--bg);
+    user-select: none;
+  }
+  .mc-option:hover {
+    border-color: var(--accent);
+    background: #FFF5F5;
+  }
+  .mc-option.selected {
+    border-color: var(--accent);
+    background: #FFF5F5;
+  }
+  .mc-radio {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.18s;
+  }
+  .mc-option.selected .mc-radio {
+    border-color: var(--accent);
+  }
+  .mc-radio::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.18s;
+  }
+  .mc-option.selected .mc-radio::after {
+    opacity: 1;
+  }
+  .mc-label {
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  /* Text inputs */
+  .text-input, .textarea-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.18s, box-shadow 0.18s;
+    outline: none;
+    margin-bottom: 32px;
+  }
+  .text-input:focus, .textarea-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(204,0,0,0.08);
+  }
+  .textarea-input {
+    min-height: 130px;
+    resize: vertical;
+  }
+  .text-input::placeholder, .textarea-input::placeholder {
+    color: #AAA;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 15px 32px;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.1s;
+    display: inline-block;
+  }
+  .btn-primary:hover { background: #AA0000; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled {
+    background: #E0A0A0;
+    cursor: not-allowed;
+  }
+
+  .btn-back {
+    background: none;
+    color: #888;
+    border: none;
+    padding: 8px 0;
+    font-family: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 28px;
+    transition: color 0.18s;
+  }
+  .btn-back:hover { color: var(--text); }
+  .btn-back svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  /* Nav row */
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .nav-row .btn-back { margin-bottom: 0; }
+
+  /* Progress text */
+  .progress-text {
+    font-size: 0.78rem;
+    color: #888;
+    text-align: right;
+  }
+
+  /* Closing screen */
+  .closing-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--secondary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .closing-icon svg { width: 28px; height: 28px; color: var(--accent); }
+  .closing-title {
+    font-size: clamp(1.5rem, 3.5vw, 2rem);
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .closing-desc {
+    font-size: 0.97rem;
+    line-height: 1.7;
+    color: #555;
+  }
+
+  /* Helper text */
+  .field-helper {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  /* Error */
+  .field-error {
+    font-size: 0.82rem;
+    color: var(--accent);
+    margin-top: -24px;
+    margin-bottom: 16px;
+  }
+
+  /* Validation shake */
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60%  { transform: translateX(-6px); }
+    40%,80%  { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.35s ease; }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    #app { padding: 48px 16px 40px; }
+    .mc-option { padding: 12px 14px; }
+    .btn-primary { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar-container">
+  <div id="progress-bar"></div>
+</div>
+
+<div id="app">
+
+  <!-- WELCOME -->
+  <div class="screen active" id="screen-welcome">
+    <div class="logo-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" aria-label="Cuepoint">
+        <!-- Vinyl disc -->
+        <circle cx="120" cy="120" r="118" fill="#2D2D2D"/>
+        <!-- White label area -->
+        <circle cx="120" cy="120" r="54" fill="#FFFFFF"/>
+        <!-- Red tonearm bar (pill shape, center→right) -->
+        <rect x="114" y="112" width="78" height="16" rx="8" fill="#CC0000"/>
+        <!-- Center pivot dot -->
+        <circle cx="115" cy="120" r="6" fill="#111111"/>
+        <!-- CUEPOINT text -->
+        <text x="155" y="120"
+              font-family="'Arial Black', 'Arial', sans-serif"
+              font-weight="900"
+              font-size="9"
+              letter-spacing="1.8"
+              fill="#FFFFFF"
+              text-anchor="middle"
+              dominant-baseline="middle">CUEPOINT</text>
+      </svg>
+    </div>
+    <h1 class="welcome-title">Is your business growing as fast as it should be?</h1>
+    <p class="welcome-desc">This short assessment helps us understand where your business stands across six key growth areas — from how customers find you to how well you convert and retain them. It takes about 10–15 minutes and your answers are completely confidential. We'll review your responses before our conversation and come prepared with a clear picture of where the biggest opportunities are.</p>
+    <button class="btn-primary" onclick="goTo('screen-intake-1')">Let's get started</button>
+  </div>
+
+  <!-- INTAKE Q1: Name -->
+  <div class="screen" id="screen-intake-1">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">What's your name?</p>
+    <input class="text-input" id="field-name" type="text" placeholder="Your full name" autocomplete="name">
+    <div id="err-name" class="field-error" style="display:none">Please enter your name.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextIntake('intake-1')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE Q2: Business name -->
+  <div class="screen" id="screen-intake-2">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">What's the name of your business?</p>
+    <input class="text-input" id="field-business" type="text" placeholder="Business name" autocomplete="organization">
+    <div id="err-business" class="field-error" style="display:none">Please enter your business name.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextIntake('intake-2')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE Q3: Email -->
+  <div class="screen" id="screen-intake-3">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">What's the best email address to reach you?</p>
+    <input class="text-input" id="field-email" type="email" placeholder="you@example.com" autocomplete="email">
+    <div id="err-email" class="field-error" style="display:none">Please enter a valid email address.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextIntake('intake-3')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE Q4: Phone -->
+  <div class="screen" id="screen-intake-4">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">And a phone number? <span class="optional-tag">(optional)</span></p>
+    <input class="text-input" id="field-phone" type="tel" placeholder="(555) 555-5555" autocomplete="tel">
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="goTo('screen-intake-5')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE Q5: Revenue -->
+  <div class="screen" id="screen-intake-5">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Roughly what is your business's annual revenue?</p>
+    <div class="mc-options" id="mc-revenue">
+      <div class="mc-option" onclick="selectMC('revenue','Under $500K',this)"><div class="mc-radio"></div><span class="mc-label">Under $500K</span></div>
+      <div class="mc-option" onclick="selectMC('revenue','$500K–$1M',this)"><div class="mc-radio"></div><span class="mc-label">$500K–$1M</span></div>
+      <div class="mc-option" onclick="selectMC('revenue','$1M–$2.5M',this)"><div class="mc-radio"></div><span class="mc-label">$1M–$2.5M</span></div>
+      <div class="mc-option" onclick="selectMC('revenue','$2.5M–$5M',this)"><div class="mc-radio"></div><span class="mc-label">$2.5M–$5M</span></div>
+      <div class="mc-option" onclick="selectMC('revenue','$5M–$10M',this)"><div class="mc-radio"></div><span class="mc-label">$5M–$10M</span></div>
+      <div class="mc-option" onclick="selectMC('revenue','Over $10M',this)"><div class="mc-radio"></div><span class="mc-label">Over $10M</span></div>
+    </div>
+    <div id="err-revenue" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('revenue','screen-intake-6')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE Q6: Business description -->
+  <div class="screen" id="screen-intake-6">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Briefly describe what your business does and who your main customers are.</p>
+    <textarea class="textarea-input" id="field-biz-desc" placeholder="e.g. We're a landscaping company serving residential and commercial clients in the Hudson Valley"></textarea>
+    <div id="err-biz-desc" class="field-error" style="display:none">Please describe your business.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextIntake('intake-6')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE: Website URL -->
+  <div class="screen" id="screen-intake-7">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Your website URL</p>
+    <input class="text-input" id="field-website_url" type="url" placeholder="https://www.yourbusiness.com" autocomplete="url">
+    <div id="err-website_url" class="field-error" style="display:none">Please enter your website URL.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextIntake('intake-7')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE: Service area -->
+  <div class="screen" id="screen-intake-8">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">City or primary service area</p>
+    <input class="text-input" id="field-service_area" type="text" placeholder="e.g. Austin, TX">
+    <div id="err-service_area" class="field-error" style="display:none">Please enter your city or service area.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextIntake('intake-8')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE: GBP URL (optional) -->
+  <div class="screen" id="screen-intake-9">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Google Business Profile URL <span class="optional-tag">(optional)</span></p>
+    <p class="field-helper">Paste the link to your Google Business listing if you have it handy</p>
+    <input class="text-input" id="field-gbp_url" type="url" placeholder="https://maps.google.com/...">
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="goTo('screen-intake-10')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE: Social media (optional) -->
+  <div class="screen" id="screen-intake-10">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Most active social media profile <span class="optional-tag">(optional)</span></p>
+    <p class="field-helper">Paste the URL of whichever platform you post on most</p>
+    <input class="text-input" id="field-social_url" type="url" placeholder="https://www.instagram.com/yourbusiness">
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="goTo('screen-intake-11')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE: Paid ads (required) -->
+  <div class="screen" id="screen-intake-11">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Are you currently running any paid ads? <span style="font-weight:400;color:#666">(Google, Facebook, etc.)</span></p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('paid_ads','Yes',this)"><div class="mc-radio"></div><span class="mc-label">Yes</span></div>
+      <div class="mc-option" onclick="selectMC('paid_ads','No',this)"><div class="mc-radio"></div><span class="mc-label">No</span></div>
+      <div class="mc-option" onclick="selectMC('paid_ads','Not sure',this)"><div class="mc-radio"></div><span class="mc-label">Not sure</span></div>
+    </div>
+    <div id="err-paid_ads" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('paid_ads','screen-intake-12')">Next</button>
+    </div>
+  </div>
+
+  <!-- INTAKE: Email list (required) -->
+  <div class="screen" id="screen-intake-12">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have a customer email list?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('email_list','Yes, and we use it regularly',this)"><div class="mc-radio"></div><span class="mc-label">Yes, and we use it regularly</span></div>
+      <div class="mc-option" onclick="selectMC('email_list','Yes, but we rarely use it',this)"><div class="mc-radio"></div><span class="mc-label">Yes, but we rarely use it</span></div>
+      <div class="mc-option" onclick="selectMC('email_list','No',this)"><div class="mc-radio"></div><span class="mc-label">No</span></div>
+    </div>
+    <div id="err-email_list" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('email_list','screen-s1-intro')">Next</button>
+    </div>
+  </div>
+
+  <!-- SECTION 1 STATEMENT -->
+  <div class="screen" id="screen-s1-intro">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="section-label">Section 1 of 6</p>
+    <h2 class="section-title">Local Visibility &amp; Findability</h2>
+    <p class="section-desc">These questions help us understand how easy it is for the right customers to find you online.</p>
+    <button class="btn-primary" onclick="goTo('screen-q1')">Continue</button>
+  </div>
+
+  <!-- Q1 -->
+  <div class="screen" id="screen-q1">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">When a potential customer searches for your type of business in your area, where do you typically show up?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q1','Top of Google / maps results',this)"><div class="mc-radio"></div><span class="mc-label">Top of Google / maps results</span></div>
+      <div class="mc-option" onclick="selectMC('q1','Somewhere on page one',this)"><div class="mc-radio"></div><span class="mc-label">Somewhere on page one</span></div>
+      <div class="mc-option" onclick="selectMC('q1','Page two or beyond',this)"><div class="mc-radio"></div><span class="mc-label">Page two or beyond</span></div>
+      <div class="mc-option" onclick="selectMC('q1','I don\'t know where we show up',this)"><div class="mc-radio"></div><span class="mc-label">I don't know where we show up</span></div>
+    </div>
+    <div id="err-q1" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q1','screen-q2')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="screen" id="screen-q2">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How complete and active is your Google Business Profile?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q2','Fully set up — we post regularly and respond to reviews',this)"><div class="mc-radio"></div><span class="mc-label">Fully set up — we post regularly and respond to reviews</span></div>
+      <div class="mc-option" onclick="selectMC('q2','Set up but we rarely touch it',this)"><div class="mc-radio"></div><span class="mc-label">Set up but we rarely touch it</span></div>
+      <div class="mc-option" onclick="selectMC('q2','Partially set up',this)"><div class="mc-radio"></div><span class="mc-label">Partially set up</span></div>
+      <div class="mc-option" onclick="selectMC('q2','I\'m not sure we have one',this)"><div class="mc-radio"></div><span class="mc-label">I'm not sure we have one</span></div>
+    </div>
+    <div id="err-q2" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q2','screen-q3')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="screen" id="screen-q3">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How do most new customers find you today?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q3','Word of mouth / referrals',this)"><div class="mc-radio"></div><span class="mc-label">Word of mouth / referrals</span></div>
+      <div class="mc-option" onclick="selectMC('q3','Google search',this)"><div class="mc-radio"></div><span class="mc-label">Google search</span></div>
+      <div class="mc-option" onclick="selectMC('q3','Social media',this)"><div class="mc-radio"></div><span class="mc-label">Social media</span></div>
+      <div class="mc-option" onclick="selectMC('q3','Local advertising',this)"><div class="mc-radio"></div><span class="mc-label">Local advertising</span></div>
+      <div class="mc-option" onclick="selectMC('q3','Mix of the above',this)"><div class="mc-radio"></div><span class="mc-label">Mix of the above</span></div>
+    </div>
+    <div id="err-q3" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q3','screen-q4')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="screen" id="screen-q4">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have a strategy for generating online reviews?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q4','Yes — we actively ask customers and have a process',this)"><div class="mc-radio"></div><span class="mc-label">Yes — we actively ask customers and have a process</span></div>
+      <div class="mc-option" onclick="selectMC('q4','We ask sometimes but it\'s inconsistent',this)"><div class="mc-radio"></div><span class="mc-label">We ask sometimes but it's inconsistent</span></div>
+      <div class="mc-option" onclick="selectMC('q4','We rely on customers to leave reviews on their own',this)"><div class="mc-radio"></div><span class="mc-label">We rely on customers to leave reviews on their own</span></div>
+      <div class="mc-option" onclick="selectMC('q4','No, we haven\'t focused on this',this)"><div class="mc-radio"></div><span class="mc-label">No, we haven't focused on this</span></div>
+    </div>
+    <div id="err-q4" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q4','screen-q5')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="screen" id="screen-q5">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How would you rate your overall online visibility compared to local competitors? <span style="font-weight:400;color:#666">(1 = invisible, 5 = we dominate local search)</span></p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q5','5 — We dominate local search',this)"><div class="mc-radio"></div><span class="mc-label">5 — We dominate local search</span></div>
+      <div class="mc-option" onclick="selectMC('q5','4 — Visible and competitive',this)"><div class="mc-radio"></div><span class="mc-label">4 — Visible and competitive</span></div>
+      <div class="mc-option" onclick="selectMC('q5','3 — Somewhere in the middle',this)"><div class="mc-radio"></div><span class="mc-label">3 — Somewhere in the middle</span></div>
+      <div class="mc-option" onclick="selectMC('q5','1 or 2 — Hard to find or invisible',this)"><div class="mc-radio"></div><span class="mc-label">1 or 2 — Hard to find or invisible</span></div>
+    </div>
+    <div id="err-q5" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q5','screen-s2-intro')">Next</button>
+    </div>
+  </div>
+
+  <!-- SECTION 2 STATEMENT -->
+  <div class="screen" id="screen-s2-intro">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="section-label">Section 2 of 6</p>
+    <h2 class="section-title">Website &amp; Digital First Impression</h2>
+    <p class="section-desc">Let's look at what happens when someone finds you online.</p>
+    <button class="btn-primary" onclick="goTo('screen-q6')">Continue</button>
+  </div>
+
+  <!-- Q6 -->
+  <div class="screen" id="screen-q6">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">When did you last meaningfully update your website?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q6','Within the last 6 months',this)"><div class="mc-radio"></div><span class="mc-label">Within the last 6 months</span></div>
+      <div class="mc-option" onclick="selectMC('q6','1–2 years ago',this)"><div class="mc-radio"></div><span class="mc-label">1–2 years ago</span></div>
+      <div class="mc-option" onclick="selectMC('q6','More than 2 years ago',this)"><div class="mc-radio"></div><span class="mc-label">More than 2 years ago</span></div>
+      <div class="mc-option" onclick="selectMC('q6','We don\'t have a website',this)"><div class="mc-radio"></div><span class="mc-label">We don't have a website</span></div>
+    </div>
+    <div id="err-q6" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q6','screen-q7')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q7 -->
+  <div class="screen" id="screen-q7">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">When someone lands on your homepage, which best describes what they see first?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q7','A clear headline explaining what we do, who we serve, and how to contact us',this)"><div class="mc-radio"></div><span class="mc-label">A clear headline explaining what we do, who we serve, and how to contact us</span></div>
+      <div class="mc-option" onclick="selectMC('q7','Our company name and a general welcome message',this)"><div class="mc-radio"></div><span class="mc-label">Our company name and a general welcome message</span></div>
+      <div class="mc-option" onclick="selectMC('q7','I\'m not sure — I\'d have to look',this)"><div class="mc-radio"></div><span class="mc-label">I'm not sure — I'd have to look</span></div>
+      <div class="mc-option" onclick="selectMC('q7','A lot of information but it\'s hard to know where to start',this)"><div class="mc-radio"></div><span class="mc-label">A lot of information but it's hard to know where to start</span></div>
+    </div>
+    <div id="err-q7" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q7','screen-q8')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q8 -->
+  <div class="screen" id="screen-q8">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How does your website perform on mobile?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q8','Great — it was designed with mobile in mind',this)"><div class="mc-radio"></div><span class="mc-label">Great — it was designed with mobile in mind</span></div>
+      <div class="mc-option" onclick="selectMC('q8','It works but isn\'t optimized',this)"><div class="mc-radio"></div><span class="mc-label">It works but isn't optimized</span></div>
+      <div class="mc-option" onclick="selectMC('q8','It\'s hard to use on a phone',this)"><div class="mc-radio"></div><span class="mc-label">It's hard to use on a phone</span></div>
+      <div class="mc-option" onclick="selectMC('q8','I don\'t know',this)"><div class="mc-radio"></div><span class="mc-label">I don't know</span></div>
+    </div>
+    <div id="err-q8" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q8','screen-q9')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q9 -->
+  <div class="screen" id="screen-q9">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you know how many people visit your website and what they do when they get there?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q9','Yes — we actively use data to improve our site',this)"><div class="mc-radio"></div><span class="mc-label">Yes — we actively use data to improve our site</span></div>
+      <div class="mc-option" onclick="selectMC('q9','We track traffic and behavior and review it regularly',this)"><div class="mc-radio"></div><span class="mc-label">We track traffic and behavior and review it regularly</span></div>
+      <div class="mc-option" onclick="selectMC('q9','We have Google Analytics but rarely look at it',this)"><div class="mc-radio"></div><span class="mc-label">We have Google Analytics but rarely look at it</span></div>
+      <div class="mc-option" onclick="selectMC('q9','No — we have no visibility into this',this)"><div class="mc-radio"></div><span class="mc-label">No — we have no visibility into this</span></div>
+    </div>
+    <div id="err-q9" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q9','screen-q10')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q10 -->
+  <div class="screen" id="screen-q10">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">What happens when someone visits your site and doesn't contact you?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q10','We have retargeting or active re-engagement in place',this)"><div class="mc-radio"></div><span class="mc-label">We have retargeting or active re-engagement in place</span></div>
+      <div class="mc-option" onclick="selectMC('q10','We have basic email capture (newsletter, offer, etc.)',this)"><div class="mc-radio"></div><span class="mc-label">We have basic email capture (newsletter, offer, etc.)</span></div>
+      <div class="mc-option" onclick="selectMC('q10','Nothing — we have no way to follow up or re-engage them',this)"><div class="mc-radio"></div><span class="mc-label">Nothing — we have no way to follow up or re-engage them</span></div>
+    </div>
+    <div id="err-q10" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q10','screen-s3-intro')">Next</button>
+    </div>
+  </div>
+
+  <!-- SECTION 3 STATEMENT -->
+  <div class="screen" id="screen-s3-intro">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="section-label">Section 3 of 6</p>
+    <h2 class="section-title">Lead Generation &amp; Pipeline</h2>
+    <p class="section-desc">Now let's look at how you actively bring in new business.</p>
+    <button class="btn-primary" onclick="goTo('screen-q11')">Continue</button>
+  </div>
+
+  <!-- Q11 -->
+  <div class="screen" id="screen-q11">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How would you describe your current approach to generating new leads?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q11','We have a consistent, active process that generates predictable leads',this)"><div class="mc-radio"></div><span class="mc-label">We have a consistent, active process that generates predictable leads</span></div>
+      <div class="mc-option" onclick="selectMC('q11','We do some outreach but it\'s inconsistent',this)"><div class="mc-radio"></div><span class="mc-label">We do some outreach but it's inconsistent</span></div>
+      <div class="mc-option" onclick="selectMC('q11','We\'re mostly referral-dependent',this)"><div class="mc-radio"></div><span class="mc-label">We're mostly referral-dependent</span></div>
+      <div class="mc-option" onclick="selectMC('q11','Reactive — we wait for people to find us',this)"><div class="mc-radio"></div><span class="mc-label">Reactive — we wait for people to find us</span></div>
+    </div>
+    <div id="err-q11" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q11','screen-q12')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q12 -->
+  <div class="screen" id="screen-q12">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have a system for tracking prospects from first contact through close?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q12','Yes — we use a CRM or similar tool',this)"><div class="mc-radio"></div><span class="mc-label">Yes — we use a CRM or similar tool</span></div>
+      <div class="mc-option" onclick="selectMC('q12','We track in spreadsheets or email',this)"><div class="mc-radio"></div><span class="mc-label">We track in spreadsheets or email</span></div>
+      <div class="mc-option" onclick="selectMC('q12','It\'s mostly in people\'s heads',this)"><div class="mc-radio"></div><span class="mc-label">It's mostly in people's heads</span></div>
+      <div class="mc-option" onclick="selectMC('q12','No system at all',this)"><div class="mc-radio"></div><span class="mc-label">No system at all</span></div>
+    </div>
+    <div id="err-q12" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q12','screen-q13')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q13 -->
+  <div class="screen" id="screen-q13">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How quickly does someone from your team follow up when a new lead comes in?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q13','Within an hour',this)"><div class="mc-radio"></div><span class="mc-label">Within an hour</span></div>
+      <div class="mc-option" onclick="selectMC('q13','Same day',this)"><div class="mc-radio"></div><span class="mc-label">Same day</span></div>
+      <div class="mc-option" onclick="selectMC('q13','Within a few days',this)"><div class="mc-radio"></div><span class="mc-label">Within a few days</span></div>
+      <div class="mc-option" onclick="selectMC('q13','It varies a lot — no standard process',this)"><div class="mc-radio"></div><span class="mc-label">It varies a lot — no standard process</span></div>
+    </div>
+    <div id="err-q13" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q13','screen-q14')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q14 -->
+  <div class="screen" id="screen-q14">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you know what percentage of your leads convert to paying customers?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q14','Yes — we track this closely',this)"><div class="mc-radio"></div><span class="mc-label">Yes — we track this closely</span></div>
+      <div class="mc-option" onclick="selectMC('q14','We have a rough sense but no hard number',this)"><div class="mc-radio"></div><span class="mc-label">We have a rough sense but no hard number</span></div>
+      <div class="mc-option" onclick="selectMC('q14','No idea',this)"><div class="mc-radio"></div><span class="mc-label">No idea</span></div>
+    </div>
+    <div id="err-q14" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q14','screen-q15')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q15 Long text -->
+  <div class="screen" id="screen-q15">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">What's the biggest obstacle to generating more new business right now? <span class="optional-tag">(optional)</span></p>
+    <textarea class="textarea-input" id="field-q15" placeholder="Be as specific as you'd like — this helps us focus our conversation"></textarea>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="goTo('screen-s4-intro')">Next</button>
+    </div>
+  </div>
+
+  <!-- SECTION 4 STATEMENT -->
+  <div class="screen" id="screen-s4-intro">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="section-label">Section 4 of 6</p>
+    <h2 class="section-title">Sales Process &amp; Conversion</h2>
+    <p class="section-desc">Let's look at how you close business once a prospect is interested.</p>
+    <button class="btn-primary" onclick="goTo('screen-q16')">Continue</button>
+  </div>
+
+  <!-- Q16 -->
+  <div class="screen" id="screen-q16">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How would you describe your sales process?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q16','Documented and consistent — anyone on our team could follow it',this)"><div class="mc-radio"></div><span class="mc-label">Documented and consistent — anyone on our team could follow it</span></div>
+      <div class="mc-option" onclick="selectMC('q16','Mostly consistent but lives in one person\'s head',this)"><div class="mc-radio"></div><span class="mc-label">Mostly consistent but lives in one person's head</span></div>
+      <div class="mc-option" onclick="selectMC('q16','Each situation is handled differently',this)"><div class="mc-radio"></div><span class="mc-label">Each situation is handled differently</span></div>
+      <div class="mc-option" onclick="selectMC('q16','We don\'t really have a defined process',this)"><div class="mc-radio"></div><span class="mc-label">We don't really have a defined process</span></div>
+    </div>
+    <div id="err-q16" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q16','screen-q17')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q17 -->
+  <div class="screen" id="screen-q17">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have standard materials — proposals, pricing, case studies — that you use consistently?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q17','Yes — polished and up to date',this)"><div class="mc-radio"></div><span class="mc-label">Yes — polished and up to date</span></div>
+      <div class="mc-option" onclick="selectMC('q17','We have some but they\'re outdated or inconsistent',this)"><div class="mc-radio"></div><span class="mc-label">We have some but they're outdated or inconsistent</span></div>
+      <div class="mc-option" onclick="selectMC('q17','We create things from scratch each time',this)"><div class="mc-radio"></div><span class="mc-label">We create things from scratch each time</span></div>
+      <div class="mc-option" onclick="selectMC('q17','No formal materials',this)"><div class="mc-radio"></div><span class="mc-label">No formal materials</span></div>
+    </div>
+    <div id="err-q17" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q17','screen-q18')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q18 -->
+  <div class="screen" id="screen-q18">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">How confident are you in your pricing?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q18','Very confident — we price for value and rarely discount',this)"><div class="mc-radio"></div><span class="mc-label">Very confident — we price for value and rarely discount</span></div>
+      <div class="mc-option" onclick="selectMC('q18','Somewhat — we sometimes feel pressure to lower prices',this)"><div class="mc-radio"></div><span class="mc-label">Somewhat — we sometimes feel pressure to lower prices</span></div>
+      <div class="mc-option" onclick="selectMC('q18','Not confident — we often compete on price',this)"><div class="mc-radio"></div><span class="mc-label">Not confident — we often compete on price</span></div>
+      <div class="mc-option" onclick="selectMC('q18','We\'re not sure if our pricing is right',this)"><div class="mc-radio"></div><span class="mc-label">We're not sure if our pricing is right</span></div>
+    </div>
+    <div id="err-q18" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q18','screen-q19')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q19 -->
+  <div class="screen" id="screen-q19">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have tiered offerings — different levels of service at different price points?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q19','Yes — customers can choose what fits them',this)"><div class="mc-radio"></div><span class="mc-label">Yes — customers can choose what fits them</span></div>
+      <div class="mc-option" onclick="selectMC('q19','Somewhat — we have some options',this)"><div class="mc-radio"></div><span class="mc-label">Somewhat — we have some options</span></div>
+      <div class="mc-option" onclick="selectMC('q19','No — we offer one thing at one price',this)"><div class="mc-radio"></div><span class="mc-label">No — we offer one thing at one price</span></div>
+    </div>
+    <div id="err-q19" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q19','screen-q20')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q20 Long text -->
+  <div class="screen" id="screen-q20">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Where do deals most often fall apart — what's the most common reason you lose business? <span class="optional-tag">(optional)</span></p>
+    <textarea class="textarea-input" id="field-q20" placeholder="Price, timing, trust, competition — whatever comes to mind"></textarea>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="goTo('screen-s5-intro')">Next</button>
+    </div>
+  </div>
+
+  <!-- SECTION 5 STATEMENT -->
+  <div class="screen" id="screen-s5-intro">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="section-label">Section 5 of 6</p>
+    <h2 class="section-title">Customer Retention &amp; Referrals</h2>
+    <p class="section-desc">Let's see how well you're maximizing the customers you already have.</p>
+    <button class="btn-primary" onclick="goTo('screen-q21')">Continue</button>
+  </div>
+
+  <!-- Q21 -->
+  <div class="screen" id="screen-q21">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have a systematic way of staying in touch with past customers?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q21','Yes — email, check-ins, seasonal outreach, etc.',this)"><div class="mc-radio"></div><span class="mc-label">Yes — email, check-ins, seasonal outreach, etc.</span></div>
+      <div class="mc-option" onclick="selectMC('q21','We reach out occasionally but it\'s not consistent',this)"><div class="mc-radio"></div><span class="mc-label">We reach out occasionally but it's not consistent</span></div>
+      <div class="mc-option" onclick="selectMC('q21','We rely on them to come back to us',this)"><div class="mc-radio"></div><span class="mc-label">We rely on them to come back to us</span></div>
+      <div class="mc-option" onclick="selectMC('q21','No system at all',this)"><div class="mc-radio"></div><span class="mc-label">No system at all</span></div>
+    </div>
+    <div id="err-q21" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q21','screen-q22')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q22 -->
+  <div class="screen" id="screen-q22">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you actively ask satisfied customers for referrals?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q22','Yes — it\'s a defined part of our process',this)"><div class="mc-radio"></div><span class="mc-label">Yes — it's a defined part of our process</span></div>
+      <div class="mc-option" onclick="selectMC('q22','Sometimes, but informally',this)"><div class="mc-radio"></div><span class="mc-label">Sometimes, but informally</span></div>
+      <div class="mc-option" onclick="selectMC('q22','Rarely',this)"><div class="mc-radio"></div><span class="mc-label">Rarely</span></div>
+      <div class="mc-option" onclick="selectMC('q22','Never — we feel awkward asking',this)"><div class="mc-radio"></div><span class="mc-label">Never — we feel awkward asking</span></div>
+    </div>
+    <div id="err-q22" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q22','screen-q23')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q23 -->
+  <div class="screen" id="screen-q23">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you measure customer satisfaction in any formal way?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q23','Yes — surveys, NPS, or regular check-ins',this)"><div class="mc-radio"></div><span class="mc-label">Yes — surveys, NPS, or regular check-ins</span></div>
+      <div class="mc-option" onclick="selectMC('q23','Informally — we ask but don\'t track it',this)"><div class="mc-radio"></div><span class="mc-label">Informally — we ask but don't track it</span></div>
+      <div class="mc-option" onclick="selectMC('q23','No — we assume they\'d tell us if something was wrong',this)"><div class="mc-radio"></div><span class="mc-label">No — we assume they'd tell us if something was wrong</span></div>
+    </div>
+    <div id="err-q23" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q23','screen-q24')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q24 -->
+  <div class="screen" id="screen-q24">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">What percentage of your revenue comes from repeat customers vs. new customers?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q24','Mostly repeat customers (70%+)',this)"><div class="mc-radio"></div><span class="mc-label">Mostly repeat customers (70%+)</span></div>
+      <div class="mc-option" onclick="selectMC('q24','Roughly even split',this)"><div class="mc-radio"></div><span class="mc-label">Roughly even split</span></div>
+      <div class="mc-option" onclick="selectMC('q24','Mostly new customers',this)"><div class="mc-radio"></div><span class="mc-label">Mostly new customers</span></div>
+      <div class="mc-option" onclick="selectMC('q24','I don\'t know',this)"><div class="mc-radio"></div><span class="mc-label">I don't know</span></div>
+    </div>
+    <div id="err-q24" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q24','screen-s6-intro')">Next</button>
+    </div>
+  </div>
+
+  <!-- SECTION 6 STATEMENT -->
+  <div class="screen" id="screen-s6-intro">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="section-label">Section 6 of 6</p>
+    <h2 class="section-title">Revenue Visibility &amp; Operations</h2>
+    <p class="section-desc">Last section. These questions help us understand how clearly you can see what's driving your business.</p>
+    <button class="btn-primary" onclick="goTo('screen-q25')">Continue</button>
+  </div>
+
+  <!-- Q25 -->
+  <div class="screen" id="screen-q25">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you know which of your services or customer types generates the most revenue?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q25','Yes — we track this and use it to make decisions',this)"><div class="mc-radio"></div><span class="mc-label">Yes — we track this and use it to make decisions</span></div>
+      <div class="mc-option" onclick="selectMC('q25','We have a general sense but haven\'t looked closely',this)"><div class="mc-radio"></div><span class="mc-label">We have a general sense but haven't looked closely</span></div>
+      <div class="mc-option" onclick="selectMC('q25','Not really — it\'s hard to break down',this)"><div class="mc-radio"></div><span class="mc-label">Not really — it's hard to break down</span></div>
+      <div class="mc-option" onclick="selectMC('q25','No — we\'ve never analyzed it',this)"><div class="mc-radio"></div><span class="mc-label">No — we've never analyzed it</span></div>
+    </div>
+    <div id="err-q25" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q25','screen-q26')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q26 -->
+  <div class="screen" id="screen-q26">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Can you forecast what next month's or next quarter's revenue will look like?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q26','Yes — with reasonable accuracy',this)"><div class="mc-radio"></div><span class="mc-label">Yes — with reasonable accuracy</span></div>
+      <div class="mc-option" onclick="selectMC('q26','Roughly, but there\'s a lot of uncertainty',this)"><div class="mc-radio"></div><span class="mc-label">Roughly, but there's a lot of uncertainty</span></div>
+      <div class="mc-option" onclick="selectMC('q26','No — it\'s hard to predict',this)"><div class="mc-radio"></div><span class="mc-label">No — it's hard to predict</span></div>
+      <div class="mc-option" onclick="selectMC('q26','We\'ve never tried',this)"><div class="mc-radio"></div><span class="mc-label">We've never tried</span></div>
+    </div>
+    <div id="err-q26" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q26','screen-q27')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q27 -->
+  <div class="screen" id="screen-q27">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">Do you have documented processes for the key things your business does repeatedly?</p>
+    <div class="mc-options">
+      <div class="mc-option" onclick="selectMC('q27','Yes — most things are documented',this)"><div class="mc-radio"></div><span class="mc-label">Yes — most things are documented</span></div>
+      <div class="mc-option" onclick="selectMC('q27','Some things are, others aren\'t',this)"><div class="mc-radio"></div><span class="mc-label">Some things are, others aren't</span></div>
+      <div class="mc-option" onclick="selectMC('q27','Most things live in people\'s heads',this)"><div class="mc-radio"></div><span class="mc-label">Most things live in people's heads</span></div>
+      <div class="mc-option" onclick="selectMC('q27','Nothing is documented',this)"><div class="mc-radio"></div><span class="mc-label">Nothing is documented</span></div>
+    </div>
+    <div id="err-q27" class="field-error" style="display:none">Please select an option.</div>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" onclick="nextMC('q27','screen-q28')">Next</button>
+    </div>
+  </div>
+
+  <!-- Q28 Long text -->
+  <div class="screen" id="screen-q28">
+    <button class="btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <p class="question-label">If you could fix one operational or business problem in the next 90 days, what would it be? <span class="optional-tag">(optional)</span></p>
+    <textarea class="textarea-input" id="field-q28" placeholder="This is the most important question in the assessment — be as specific as you can"></textarea>
+    <div class="nav-row">
+      <span></span>
+      <button class="btn-primary" id="btn-submit" onclick="submitForm()">Submit</button>
+    </div>
+  </div>
+
+  <!-- CLOSING SCREEN -->
+  <div class="screen" id="screen-closing">
+    <div class="closing-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#CC0000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 class="closing-title">You're all set.</h2>
+    <p class="closing-desc">Thank you for completing the Cuepoint GTM Diagnostic. We'll review your responses before our conversation and come prepared with a clear picture of where your biggest opportunities are. Expect to hear from us within 24 hours to schedule your diagnostic call.</p>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const answers = {};
+const history = [];
+
+// Screen order for progress calculation
+const TOTAL_SCREENS = [
+  'screen-welcome',
+  'screen-intake-1','screen-intake-2','screen-intake-3','screen-intake-4',
+  'screen-intake-5','screen-intake-6',
+  'screen-intake-7','screen-intake-8','screen-intake-9','screen-intake-10',
+  'screen-intake-11','screen-intake-12',
+  'screen-s1-intro',
+  'screen-q1','screen-q2','screen-q3','screen-q4','screen-q5',
+  'screen-s2-intro',
+  'screen-q6','screen-q7','screen-q8','screen-q9','screen-q10',
+  'screen-s3-intro',
+  'screen-q11','screen-q12','screen-q13','screen-q14','screen-q15',
+  'screen-s4-intro',
+  'screen-q16','screen-q17','screen-q18','screen-q19','screen-q20',
+  'screen-s5-intro',
+  'screen-q21','screen-q22','screen-q23','screen-q24',
+  'screen-s6-intro',
+  'screen-q25','screen-q26','screen-q27','screen-q28',
+  'screen-closing'
+];
+
+let currentScreen = 'screen-welcome';
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function goTo(id) {
+  const fromEl = document.getElementById(currentScreen);
+  const toEl   = document.getElementById(id);
+
+  fromEl.classList.add('leaving');
+  setTimeout(() => {
+    fromEl.classList.remove('active','leaving');
+    toEl.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 220);
+
+  history.push(currentScreen);
+  currentScreen = id;
+  updateProgress();
+}
+
+function goBack() {
+  if (history.length === 0) return;
+  const prev = history.pop();
+  const fromEl = document.getElementById(currentScreen);
+  const toEl   = document.getElementById(prev);
+
+  fromEl.classList.remove('active');
+  toEl.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  currentScreen = prev;
+  updateProgress();
+}
+
+function updateProgress() {
+  const idx = TOTAL_SCREENS.indexOf(currentScreen);
+  const pct = currentScreen === 'screen-welcome' ? 0
+            : currentScreen === 'screen-closing'  ? 100
+            : Math.round((idx / (TOTAL_SCREENS.length - 2)) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+// ─── Multiple choice ───────────────────────────────────────────────────────────
+function selectMC(key, value, el) {
+  answers[key] = value;
+  // Deselect siblings
+  const siblings = el.parentElement.querySelectorAll('.mc-option');
+  siblings.forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  // Hide error
+  const err = document.getElementById('err-' + key);
+  if (err) err.style.display = 'none';
+}
+
+function nextMC(key, nextScreen) {
+  if (!answers[key]) {
+    const err = document.getElementById('err-' + key);
+    if (err) {
+      err.style.display = 'block';
+      const opts = document.querySelector('[onclick*="selectMC(\'' + key + '\'"]')?.parentElement;
+      if (opts) shake(opts);
+    }
+    return;
+  }
+  goTo(nextScreen);
+}
+
+// ─── Intake text fields ───────────────────────────────────────────────────────
+const INTAKE_CONFIG = {
+  'intake-1': { field: 'name',     next: 'screen-intake-2', required: true  },
+  'intake-2': { field: 'business', next: 'screen-intake-3', required: true  },
+  'intake-3': { field: 'email',    next: 'screen-intake-4', required: true, isEmail: true },
+  'intake-6': { field: 'biz-desc',     next: 'screen-intake-7', required: true  },
+  'intake-7': { field: 'website_url',  next: 'screen-intake-8', required: true, isUrl: true },
+  'intake-8': { field: 'service_area', next: 'screen-intake-9', required: true  },
+};
+
+function nextIntake(key) {
+  const cfg = INTAKE_CONFIG[key];
+  const el  = document.getElementById('field-' + cfg.field);
+  const err = document.getElementById('err-' + cfg.field);
+
+  if (cfg.required) {
+    let valid = el.value.trim().length > 0;
+    if (cfg.isEmail) valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
+    if (cfg.isUrl)   valid = el.value.trim().length > 0;
+    if (!valid) {
+      err.style.display = 'block';
+      shake(el);
+      el.focus();
+      return;
+    }
+  }
+  err.style.display = 'none';
+  answers[cfg.field] = el.value.trim();
+  goTo(cfg.next);
+}
+
+// ─── Shake animation ─────────────────────────────────────────────────────────
+function shake(el) {
+  el.classList.remove('shake');
+  void el.offsetWidth; // reflow
+  el.classList.add('shake');
+  el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+}
+
+// ─── Submit ───────────────────────────────────────────────────────────────────
+async function submitForm() {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  // Collect all textarea answers
+  answers['q15'] = document.getElementById('field-q15')?.value.trim() || '';
+  answers['q20'] = document.getElementById('field-q20')?.value.trim() || '';
+  answers['q28'] = document.getElementById('field-q28')?.value.trim() || '';
+
+  const payload = {
+    _subject: 'Cuepoint GTM Diagnostic — ' + (answers['business'] || 'New Response'),
+    _replyto: answers['email'] || '',
+    Name: answers['name'] || '',
+    Business: answers['business'] || '',
+    Email: answers['email'] || '',
+    Phone: (document.getElementById('field-phone')?.value.trim()) || '',
+    'Annual Revenue': answers['revenue'] || '',
+    'Business Description': answers['biz-desc'] || '',
+    website_url:  (document.getElementById('field-website_url')?.value.trim())  || '',
+    service_area: (document.getElementById('field-service_area')?.value.trim()) || '',
+    gbp_url:      (document.getElementById('field-gbp_url')?.value.trim())      || '',
+    social_url:   (document.getElementById('field-social_url')?.value.trim())   || '',
+    paid_ads:     answers['paid_ads']   || '',
+    email_list:   answers['email_list'] || '',
+    // Section 1
+    'Q1 — Search Visibility': answers['q1'] || '',
+    'Q2 — Google Business Profile': answers['q2'] || '',
+    'Q3 — How Customers Find You': answers['q3'] || '',
+    'Q4 — Review Strategy': answers['q4'] || '',
+    'Q5 — Visibility Rating': answers['q5'] || '',
+    // Section 2
+    'Q6 — Last Website Update': answers['q6'] || '',
+    'Q7 — Homepage First Impression': answers['q7'] || '',
+    'Q8 — Mobile Performance': answers['q8'] || '',
+    'Q9 — Website Analytics': answers['q9'] || '',
+    'Q10 — Re-engagement Strategy': answers['q10'] || '',
+    // Section 3
+    'Q11 — Lead Generation Approach': answers['q11'] || '',
+    'Q12 — Prospect Tracking System': answers['q12'] || '',
+    'Q13 — Lead Follow-up Speed': answers['q13'] || '',
+    'Q14 — Lead Conversion Tracking': answers['q14'] || '',
+    'Q15 — Biggest Lead Generation Obstacle': answers['q15'] || '',
+    // Section 4
+    'Q16 — Sales Process': answers['q16'] || '',
+    'Q17 — Sales Materials': answers['q17'] || '',
+    'Q18 — Pricing Confidence': answers['q18'] || '',
+    'Q19 — Tiered Offerings': answers['q19'] || '',
+    'Q20 — Where Deals Fall Apart': answers['q20'] || '',
+    // Section 5
+    'Q21 — Customer Touch System': answers['q21'] || '',
+    'Q22 — Asking for Referrals': answers['q22'] || '',
+    'Q23 — Satisfaction Measurement': answers['q23'] || '',
+    'Q24 — Revenue Split': answers['q24'] || '',
+    // Section 6
+    'Q25 — Revenue Visibility': answers['q25'] || '',
+    'Q26 — Revenue Forecasting': answers['q26'] || '',
+    'Q27 — Documented Processes': answers['q27'] || '',
+    'Q28 — 90-Day Problem to Fix': answers['q28'] || '',
+  };
+
+  try {
+    const resp = await fetch('https://formspree.io/f/xojyolpn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (resp.ok) {
+      goTo('screen-closing');
+    } else {
+      throw new Error('Server error');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+    alert('Something went wrong. Please try again or email us at eric@cuepoint.io');
+  }
+}
+
+// ─── Enter key support for text inputs ───────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  const id = active.id;
+  if (id === 'screen-intake-1') nextIntake('intake-1');
+  else if (id === 'screen-intake-2') nextIntake('intake-2');
+  else if (id === 'screen-intake-3') nextIntake('intake-3');
+  else if (id === 'screen-intake-4') goTo('screen-intake-5');
+});
+</script>
+
+</body>
+</html>
