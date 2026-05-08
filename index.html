@@ -917,9 +917,9 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-xojEgzKl7uuz
       return;
     }
 
-    ('https://script.google.com/macros/s/AKfycby-xojEgzKl7uuzuCmwyuxGYmJiLH0Vfr4fOmQ9vHFxgM-38n76U9QmJtLHfjtVVwZOpQ/exec', {
+    fetch(APPS_SCRIPT_URL, {
       method:  'POST',
-      mode:    'no-cors',fetch
+      mode:    'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body:    JSON.stringify(data),
     }).then(function() {
