@@ -860,7 +860,12 @@
 
   function collectFormData() {
     return {
-      timestamp:          new Date().toISOString(),
+      timestamp:          (function(d) {
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        var dd = String(d.getDate()).padStart(2, '0');
+        var yy = String(d.getFullYear()).slice(-2);
+        return mm + '/' + dd + '/' + yy;
+      })(new Date()),
       signalScore:        calculateScore(),
       businessName:       document.getElementById('businessName').value,
       ownerName:          document.getElementById('ownerName').value,
