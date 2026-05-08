@@ -290,6 +290,51 @@
     .confirmation p { color: var(--muted); font-size: 14px; }
 
     .hidden { display: none !important; }
+
+    .gaps-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 9px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+    }
+
+    .gaps-box.empty { display: none; }
+
+    .gaps-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+
+    .gaps-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .gaps-list li {
+      font-size: 13px;
+      color: #78350f;
+      padding-left: 14px;
+      position: relative;
+      line-height: 1.4;
+    }
+
+    .gaps-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #f97316;
+    }
   </style>
 </head>
 <body>
@@ -584,6 +629,11 @@
         <div class="score-sublabel" id="scoreSublabel">Fill in the form above -- score updates live</div>
       </div>
 
+      <div class="gaps-box empty" id="gapsBox">
+        <div class="gaps-label">Identified Gaps</div>
+        <ul class="gaps-list" id="gapsList"></ul>
+      </div>
+
       <div class="field" style="margin-bottom:14px;">
         <label class="field-label" for="notes">Notes</label>
         <textarea id="notes" name="notes" placeholder="Anything else worth capturing about this prospect..."></textarea>
@@ -668,6 +718,97 @@
     return score;
   }
 
+  function getGaps() {
+    var gaps = [];
+
+    // GBP
+    if (getRadio('gbpClaimed') === 'no')
+      gaps.push('No Google Business Profile claimed or verified');
+
+    var gbpReviews = numVal('gbpReviewCount');
+    if (gbpReviews !== null && gbpReviews < 20)
+      gaps.push('Fewer than 20 Google reviews (' + gbpReviews + ' found)');
+
+    var gbpPost = document.getElementById('gbpLastPost').value;
+    if (gbpPost === '1-6-months') gaps.push('Google Business Profile last posted 1-6 months ago');
+    else if (gbpPost === '6-plus-months') gaps.push('Google Business Profile last posted 6+ months ago');
+    else if (gbpPost === 'none') gaps.push('No posts on Google Business Profile');
+
+    // Website
+    var websiteExists = getRadio('websiteExists');
+    if (websiteExists === 'no') {
+      gaps.push('No website');
+      gaps.push('No contact form or booking link');
+      gaps.push('No lead capture');
+    } else if (websiteExists === 'yes') {
+      var lastUpdated = document.getElementById('websiteLastUpdated').value;
+      if (lastUpdated === '3-plus') gaps.push('Website appears significantly outdated (3+ years)');
+      else if (lastUpdated === 'cant-tell') gaps.push("Website age unclear -- may be outdated");
+      if (getRadio('mobileFriendly') === 'no') gaps.push('Website is not mobile friendly');
+      if (getRadio('contactForm') === 'no') gaps.push('No contact form or booking link on website');
+      if (getRadio('leadCapture') === 'no') gaps.push('No lead capture on website');
+    }
+
+    // Social
+    var platform = document.getElementById('mostActivePlatform').value;
+    var lastPost  = document.getElementById('lastPostDate').value;
+    if (platform === 'none') gaps.push('Not active on any social media platform');
+    else if (lastPost === '6-plus-months') gaps.push('Social media last posted 6+ months ago');
+    else if (lastPost === 'none') gaps.push('No recent social media posts found');
+
+    // Yelp
+    var yelpListed = getRadio('yelpListed');
+    if (yelpListed === 'no') {
+      gaps.push('Not listed on Yelp');
+    } else if (yelpListed === 'yes') {
+      var yelpReviews = numVal('yelpReviewCount');
+      if (yelpReviews !== null && yelpReviews < 10)
+        gaps.push('Fewer than 10 Yelp reviews (' + yelpReviews + ' found)');
+    }
+
+    // Industry platform
+    if (getRadio('industryPlatform') === 'no')
+      gaps.push('Not listed on any industry platform (Houzz, Thumbtack, The Knot, etc.)');
+
+    // Conversation signals
+    if (document.querySelector('[name="sig_wordOfMouth"]').checked)
+      gaps.push('Owner relies primarily on word of mouth');
+    if (document.querySelector('[name="sig_feastOrFamine"]').checked)
+      gaps.push('Owner described a feast or famine revenue pattern');
+    if (document.querySelector('[name="sig_triedAds"]').checked)
+      gaps.push('Owner tried ads before without success');
+    if (document.querySelector('[name="sig_websiteDoesntDoMuch"]').checked)
+      gaps.push("Owner said their website doesn't do much");
+    if (document.querySelector('[name="sig_dontKnowLeadSource"]').checked)
+      gaps.push("Owner doesn't know where leads come from");
+    if (document.querySelector('[name="sig_losingToCompetitors"]').checked)
+      gaps.push('Owner is losing business to competitors without knowing why');
+    if (document.querySelector('[name="sig_wantToGrow"]').checked)
+      gaps.push("Owner wants to grow but doesn't know where to start");
+
+    return gaps;
+  }
+
+  function updateGapsDisplay() {
+    var gaps    = getGaps();
+    var box     = document.getElementById('gapsBox');
+    var list    = document.getElementById('gapsList');
+
+    list.innerHTML = '';
+
+    if (gaps.length === 0) {
+      box.classList.add('empty');
+      return;
+    }
+
+    box.classList.remove('empty');
+    gaps.forEach(function(gap) {
+      var li = document.createElement('li');
+      li.textContent = gap;
+      list.appendChild(li);
+    });
+  }
+
   function updateScoreDisplay() {
     var score  = calculateScore();
     var numEl  = document.getElementById('scoreNumber');
@@ -693,6 +834,8 @@
     }
 
     subEl.textContent = score + ' signal point' + (score === 1 ? '' : 's') + ' -- 0-3 Not a fit -- 4-6 Possible -- 7+ Strong';
+
+    updateGapsDisplay();
   }
 
   document.querySelectorAll('input[name="websiteExists"]').forEach(function(radio) {
