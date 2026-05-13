@@ -673,7 +673,7 @@
 
 <script>
   // Paste your Apps Script Web App URL here after deploying:
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-xojEgzKl7uuzuCmwyuxGYmJiLH0Vfr4fOmQ9vHFxgM-38n76U9QmJtLHfjtVVwZOpQ/exec';
+const SAVE_URL = 'https://cuepoint-report-generator-v1.vercel.app/api/save-prospect';
   function getRadio(name) {
     const el = document.querySelector('input[name="' + name + '"]:checked');
     return el ? el.value : '';
@@ -896,7 +896,8 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-xojEgzKl7uuz
       sig_dontKnowLeadSource:  document.querySelector('[name="sig_dontKnowLeadSource"]').checked,
       sig_losingToCompetitors: document.querySelector('[name="sig_losingToCompetitors"]').checked,
       sig_wantToGrow:          document.querySelector('[name="sig_wantToGrow"]').checked,
-      notes:     document.getElementById('notes').value,
+      notes:          document.getElementById('notes').value,
+      identifiedGaps: buildSignals().map(function(s) { return s.text + ' (+' + s.pts + ' pts)'; }),
     };
   }
 
@@ -909,39 +910,33 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-xojEgzKl7uuz
     btn.disabled    = true;
     btn.textContent = 'Saving...';
 
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
-      console.log('Prospect data (Apps Script URL not set):', data);
-      showConfirmation(data.businessName, true);
-      btn.disabled    = false;
-      btn.textContent = 'Save Prospect';
-      return;
-    }
-
-    fetch(APPS_SCRIPT_URL, {
+    fetch(SAVE_URL, {
       method:  'POST',
-      mode:    'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(data),
-    }).then(function() {
-      showConfirmation(data.businessName, false);
+    }).then(function(res) {
+      return res.json();
+    }).then(function(json) {
+      if (json.error) {
+        alert('Save failed: ' + json.error);
+      } else {
+        if (json.warning) console.warn('[save-prospect] Warning:', json.warning);
+        showConfirmation(data.businessName);
+      }
       btn.disabled    = false;
       btn.textContent = 'Save Prospect';
     }).catch(function(err) {
       console.error('Submission error:', err);
-      alert('Something went wrong. Check the console for details.');
+      alert('Something went wrong — check the console for details.');
       btn.disabled    = false;
       btn.textContent = 'Save Prospect';
     });
   });
 
-  function showConfirmation(businessName, devMode) {
+  function showConfirmation(businessName) {
     var name = (businessName || '').trim() || 'Prospect';
-    var msg  = document.getElementById('confirmMsg');
-
-    msg.textContent = devMode
-      ? name + ' logged to console. Paste your Apps Script URL in index.html to save to Google Sheets.'
-      : name + ' has been added to your Google Sheet.';
-
+    document.getElementById('confirmMsg').textContent =
+      name + ' has been saved to HubSpot.';
     document.getElementById('prospectForm').classList.add('hidden');
     document.getElementById('confirmation').classList.add('show');
     window.scrollTo({ top: 0, behavior: 'smooth' });
